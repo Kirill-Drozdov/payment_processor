@@ -1,1 +1,2 @@
 fastapi[standard]==0.135.2
+alembic==1.18.4
