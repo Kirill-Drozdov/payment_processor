@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum as PyEnum
 
 from sqlalchemy import (
     DateTime,
@@ -17,20 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from core.db.postgres import Base
-
-
-class PaymentStatus(str, PyEnum):
-    """Статусы платежа."""
-    PENDING = "pending"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-
-
-class Currency(str, PyEnum):
-    """Допустимые валюты."""
-    RUB = "RUB"
-    USD = "USD"
-    EUR = "EUR"
+from core.datatypes import Currency, PaymentStatus
 
 
 class Payment(Base):
