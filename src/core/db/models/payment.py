@@ -1,12 +1,12 @@
-import uuid
 from datetime import datetime
 from decimal import Decimal
+import uuid
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     Enum,
     Index,
-    JSON,
     Numeric,
     String,
     UniqueConstraint,
@@ -15,8 +15,8 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from core.db.postgres import Base
 from core.datatypes import Currency, PaymentStatus
+from core.db.postgres import Base
 
 
 class Payment(Base):
