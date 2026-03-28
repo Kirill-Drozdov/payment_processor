@@ -3,6 +3,7 @@ from http import HTTPStatus
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from schemas.payment import PaymentRequest, PaymentResponse
+from service.payment_service import PaymentServiceABC, get_payment_service
 
 router = APIRouter()
 
@@ -15,7 +16,8 @@ router = APIRouter()
     response_description='Информация по созданному платежу',
 )
 async def create_payment(
-    payment: PaymentRequest
+    payment: PaymentRequest,
+    payment_service: PaymentServiceABC = Depends(get_payment_service),
 ) -> PaymentResponse:
     """Информация по созданному платежу.
 
@@ -23,4 +25,4 @@ async def create_payment(
     - **status**: статус.
     - **created_at**: дата создания.
     """
-    return
+    return await payment_service.create(payment=payment)
