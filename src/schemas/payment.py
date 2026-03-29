@@ -8,6 +8,7 @@ from core.datatypes import Currency, PaymentStatus
 
 
 class PaymentRequest(BaseModel):
+    """Создание платежа."""
     amount: Decimal
     currency: Currency
     description: str = Field(max_length=255)
@@ -16,8 +17,16 @@ class PaymentRequest(BaseModel):
 
 
 class PaymentResponse(BaseModel):
+    """Ответ на запрос при создании платежа."""
     id: UUID  # noqa
     status: PaymentStatus
     created_at: dt.datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentDetailResponse(PaymentRequest, PaymentResponse):
+    """Просмотр подробной информации о платеже."""
+    processed_at: dt.datetime | None
+    updated_at: dt.datetime
+    idempotency_key: str

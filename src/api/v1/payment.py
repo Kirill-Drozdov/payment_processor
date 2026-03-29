@@ -1,10 +1,15 @@
+from uuid import UUID
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 
-from schemas.payment import PaymentRequest, PaymentResponse
-from service.payment_service import PaymentServiceABC, get_payment_service
 from core.dependencies import get_idempotency_key
+from schemas.payment import (
+    PaymentDetailResponse,
+    PaymentRequest,
+    PaymentResponse,
+)
+from service.payment_service import PaymentServiceABC, get_payment_service
 
 router = APIRouter()
 
@@ -31,3 +36,31 @@ async def create_payment(
         payment=payment,
         idempotency_key=idempotency_key,
     )
+
+
+@router.get(
+    '/payments/{payment_id}',
+    response_model=PaymentDetailResponse,
+    status_code=HTTPStatus.OK,
+    summary='Данные по платежу',
+    response_description='Подробные данные по платежу',
+)
+async def get_payment(
+    payment_id: UUID,
+    payment_service: PaymentServiceABC = Depends(get_payment_service),
+) -> PaymentDetailResponse:
+    """Подробные данные по платежу.
+
+    - **payment_id**: id платежа.
+    - **status**: статус.
+    - **created_at**: дата создания.
+    - **amount**: сумма.
+    - **currency**: валюта.
+    - **description**: описание.
+    - **meta_data**: мета информация.
+    - **webhook_url**: url для отправки webhook.
+    - **processed_at**: время обработки.
+    - **updated_at**: время обновления.
+    - **idempotency_key**: ключ идемпотентности.
+    """
+    return await payment_service.get(payment_id=payment_id)

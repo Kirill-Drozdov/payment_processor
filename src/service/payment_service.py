@@ -1,14 +1,19 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
+from http import HTTPStatus
 from functools import lru_cache
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.db.postgres import get_session
 from core.db.models import Payment
+from core.db.postgres import get_session
 from repository.payment_repository import PaymentRepository
-from schemas.payment import PaymentRequest, PaymentResponse
+from schemas.payment import (
+    PaymentDetailResponse,
+    PaymentRequest,
+    PaymentResponse,
+)
 
 
 class PaymentServiceABC(ABC):
@@ -21,7 +26,7 @@ class PaymentServiceABC(ABC):
         ...
 
     @abstractmethod
-    async def get(self, payment_id: UUID) -> PaymentResponse:
+    async def get(self, payment_id: UUID) -> PaymentDetailResponse:
         ...
 
 
@@ -48,10 +53,16 @@ class PaymentService(PaymentServiceABC):
             idempotency_key=idempotency_key,
         )
 
-    async def get(self, payment_id: UUID) -> PaymentResponse:
-        return await self._payment_repository.get(
+    async def get(self, payment_id: UUID) -> PaymentDetailResponse:
+        payment = await self._payment_repository.get(
             obj_id=payment_id,
         )
+        if payment is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail=f"Payment with id '{payment_id}' not found.",
+            )
+        return payment
 
 
 @lru_cache()
