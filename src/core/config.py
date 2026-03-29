@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     postgres_host: str = 'localhost'
     pgport: int = 5432
     echo_mode: bool = False
+    # RabbitMQ.
+    rabbitmq_default_user: str = 'admin'
+    rabbitmq_default_pass: str = 'admin'
+    rabbit_host: str = 'localhost'
+    rabbit_port: int = 5672
     # Общие настройки проекта.
     app_port: int = 8000
     project_name: str = 'PaymentProcessor'

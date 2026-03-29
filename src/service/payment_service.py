@@ -14,6 +14,8 @@ from schemas.payment import (
     PaymentRequest,
     PaymentResponse,
 )
+from faststream.rabbit import RabbitBroker
+from core.dependencies import get_rabbit_broker
 
 
 class PaymentServiceABC(ABC):
@@ -34,8 +36,10 @@ class PaymentService(PaymentServiceABC):
     def __init__(
         self,
         payment_repository: PaymentRepository,
+        broker: RabbitBroker,
     ) -> None:
         self._payment_repository = payment_repository
+        self._broker = broker
 
     async def create(
         self,
@@ -57,10 +61,27 @@ class PaymentService(PaymentServiceABC):
         if existing:
             return PaymentResponse.model_validate(existing)
 
-        return await self._payment_repository.create(
+        new_payment = await self._payment_repository.create(
             obj_in=payment,
             idempotency_key=idempotency_key,
         )
+
+        event_data = {
+            "payment_id": str(new_payment.id),
+            "status": new_payment.status.value,
+            "amount": str(new_payment.amount),
+            "currency": new_payment.currency.value,
+            "created_at": new_payment.created_at.isoformat(),
+            "webhook_url": new_payment.webhook_url,
+        }
+        await self._broker.publish(
+            message=event_data,  # type: ignore
+            routing_key="payment.created.v1",
+            exchange="",
+            timeout=3,
+        )
+
+        return new_payment
 
     async def get(self, payment_id: UUID) -> PaymentDetailResponse:
         """Получить подробную информацию о платеже.
@@ -88,6 +109,7 @@ class PaymentService(PaymentServiceABC):
 @lru_cache()
 def get_payment_service(
     session: AsyncSession = Depends(get_session),
+    broker: RabbitBroker = Depends(get_rabbit_broker),
 ) -> PaymentService:
     """Функция-провайдер для предоставления сервиса.
 
@@ -101,5 +123,6 @@ def get_payment_service(
         payment_repository=PaymentRepository(
             model=Payment,
             session=session,
-        )
+        ),
+        broker=broker,
     )

@@ -1,9 +1,42 @@
 
+import contextlib
+
 from fastapi import FastAPI, Depends
+from faststream.rabbit import RabbitBroker, RabbitQueue
 
 from api.v1 import payment
 from core.config import settings
 from core.dependencies import get_authentication_key
+
+
+_broker: RabbitBroker | None = None
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _broker
+
+    _broker = RabbitBroker(
+        f"amqp://{settings.rabbitmq_default_user}:"
+        f"{settings.rabbitmq_default_pass}@{settings.rabbit_host}:"
+        f"{settings.rabbit_port}/"
+    )
+    await _broker.connect()
+
+    queue = RabbitQueue(
+        name="payments.new",
+        durable=True,
+    )
+    await _broker.declare_queue(queue)
+
+    app.state.rabbit_broker = _broker
+
+    yield
+
+    # Закрытие соединения
+    if _broker:
+        await _broker.stop()
+        _broker = None
 
 
 def get_app() -> FastAPI:
@@ -17,6 +50,7 @@ def get_app() -> FastAPI:
         title=settings.project_name,
         docs_url='/docs',
         openapi_url='/openapi.json',
+        lifespan=lifespan,
     )
 
     # Подключение роутеров.
