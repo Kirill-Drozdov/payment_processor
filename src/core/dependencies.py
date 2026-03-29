@@ -13,3 +13,19 @@ async def get_idempotency_key(
             detail="Idempotency-Key header is required",
         )
     return idempotency_key
+
+
+async def get_authentication_key(
+    authentication_key: str = Header(
+        ...,
+        alias="X-API-Key",
+        max_length=255,
+    )
+) -> str:
+    """Извлекает обязательный заголовок X-API-Key для аутентификации."""
+    if not authentication_key:
+        raise HTTPException(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            detail="X-API-Key header is required",
+        )
+    return authentication_key

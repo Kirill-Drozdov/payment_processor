@@ -1,8 +1,9 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 
 from api.v1 import payment
 from core.config import settings
+from core.dependencies import get_authentication_key
 
 
 def get_app() -> FastAPI:
@@ -19,7 +20,12 @@ def get_app() -> FastAPI:
     )
 
     # Подключение роутеров.
-    app.include_router(payment.router, prefix='/api/v1', tags=['Payment'])
+    app.include_router(
+        payment.router,
+        prefix='/api/v1',
+        tags=['Payment'],
+        dependencies=[Depends(get_authentication_key)],
+    )
 
     return app
 
