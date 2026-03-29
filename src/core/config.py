@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     app_port: int = 8000
     project_name: str = 'PaymentProcessor'
     app_version: str = 'v0.0.1'
-    trace_mode: bool = False
 
     model_config = SettingsConfigDict(
         env_file='.env',

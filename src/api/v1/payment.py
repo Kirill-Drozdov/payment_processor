@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from schemas.payment import PaymentRequest, PaymentResponse
 from service.payment_service import PaymentServiceABC, get_payment_service
+from core.dependencies import get_idempotency_key
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ router = APIRouter()
 )
 async def create_payment(
     payment: PaymentRequest,
+    idempotency_key: str = Depends(get_idempotency_key),
     payment_service: PaymentServiceABC = Depends(get_payment_service),
 ) -> PaymentResponse:
     """Информация по созданному платежу.
@@ -25,4 +27,7 @@ async def create_payment(
     - **status**: статус.
     - **created_at**: дата создания.
     """
-    return await payment_service.create(payment=payment)
+    return await payment_service.create(
+        payment=payment,
+        idempotency_key=idempotency_key,
+    )

@@ -13,7 +13,11 @@ from schemas.payment import PaymentRequest, PaymentResponse
 
 class PaymentServiceABC(ABC):
     @abstractmethod
-    async def create(self, payment: PaymentRequest) -> PaymentResponse:
+    async def create(
+        self,
+        payment: PaymentRequest,
+        idempotency_key: str,
+    ) -> PaymentResponse:
         ...
 
     @abstractmethod
@@ -28,10 +32,20 @@ class PaymentService(PaymentServiceABC):
     ) -> None:
         self._payment_repository = payment_repository
 
-    async def create(self, payment: PaymentRequest) -> PaymentResponse:
-        # TODO Валидация ключа идемпотентности.
+    async def create(
+        self,
+        payment: PaymentRequest,
+        idempotency_key: str,
+    ) -> PaymentResponse:
+        existing = await self._payment_repository.get_by_idempotency_key(
+            idempotency_key=idempotency_key,
+        )
+        if existing:
+            return PaymentResponse.model_validate(existing)
+
         return await self._payment_repository.create(
             obj_in=payment,
+            idempotency_key=idempotency_key,
         )
 
     async def get(self, payment_id: UUID) -> PaymentResponse:
