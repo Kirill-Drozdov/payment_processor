@@ -42,6 +42,15 @@ class PaymentService(PaymentServiceABC):
         payment: PaymentRequest,
         idempotency_key: str,
     ) -> PaymentResponse:
+        """Создает платеж.
+
+        Args:
+            payment (PaymentRequest): данные по платежу.
+            idempotency_key (str): ключ идемпотентности.
+
+        Returns:
+            PaymentResponse: данные по созданному платежу.
+        """
         existing = await self._payment_repository.get_by_idempotency_key(
             idempotency_key=idempotency_key,
         )
@@ -54,6 +63,17 @@ class PaymentService(PaymentServiceABC):
         )
 
     async def get(self, payment_id: UUID) -> PaymentDetailResponse:
+        """Получить подробную информацию о платеже.
+
+        Args:
+            payment_id (UUID): id платежа.
+
+        Raises:
+            HTTPException: если платежа с таким id нет в БД.
+
+        Returns:
+            PaymentDetailResponse: подробная информация по платежу.
+        """
         payment = await self._payment_repository.get(
             obj_id=payment_id,
         )
