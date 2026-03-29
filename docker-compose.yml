@@ -5,7 +5,7 @@ services:
   payment_db:
     image: postgres:16.0
     ports:
-      - "5433:5432"
+      - "5433:5433"
     volumes:
     # При отладке отдельно можно использовать готовый бекап.
       # - ./db_data:/docker-entrypoint-initdb.d
