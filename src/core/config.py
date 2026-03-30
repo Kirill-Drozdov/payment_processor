@@ -31,6 +31,27 @@ class Settings(BaseSettings):
     project_name: str = 'PaymentProcessor'
     app_version: str = 'v0.0.1'
 
+    # Consumer
+    webhook_timeout: float = 10.0
+    outbox_poll_interval: float = 1.0
+    max_webhook_retries: int = 5
+    base_retry_delay: float = 1.0
+
+    @property
+    def postgres_dsn(self) -> str:
+        return (
+            f"postgresql+asyncpg://{self.postgres_user}:"
+            f"{self.postgres_password}@{self.postgres_host}:"
+            f"{self.pgport}/{self.postgres_db}"
+        )
+
+    @property
+    def rabbitmq_url(self) -> str:
+        return (
+            f"amqp://{self.rabbitmq_default_user}:{self.rabbitmq_default_pass}"
+            f"@{self.rabbit_host}:{self.rabbit_port}/"
+        )
+
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',

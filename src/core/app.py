@@ -1,13 +1,12 @@
 
 import contextlib
 
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from faststream.rabbit import RabbitBroker, RabbitQueue
 
 from api.v1 import payment
 from core.config import settings
 from core.dependencies import get_authentication_key
-
 
 _broker: RabbitBroker | None = None
 
