@@ -1,0 +1,5 @@
+fastapi[standard]==0.135.2
+alembic==1.18.4
+SQLAlchemy==2.0.48
+asyncpg==0.31.0
+faststream[rabbit]==0.6.7
