@@ -1,5 +1,5 @@
-from uuid import UUID
 import datetime as dt
+from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.future import select

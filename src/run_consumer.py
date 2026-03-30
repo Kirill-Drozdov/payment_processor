@@ -1,14 +1,14 @@
 import asyncio
-import logging
 from contextlib import asynccontextmanager
+import logging
 
 from faststream import FastStream
 from faststream.rabbit import RabbitBroker, RabbitQueue
 
-from core.config import settings
-from core.db.postgres import engine, async_session
-from consumer.worker import OutboxWorker
 from consumer.processor import handle_payment_created
+from consumer.worker import OutboxWorker
+from core.config import settings
+from core.db.postgres import async_session, engine
 from schemas.events import PaymentCreatedEvent
 
 logging.basicConfig(level=logging.INFO)

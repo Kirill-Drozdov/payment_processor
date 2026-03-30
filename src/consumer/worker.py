@@ -1,14 +1,14 @@
 # consumer/outbox_worker.py
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from consumer.webhook_sender import send_webhook
 from core.config import settings
 from core.db.postgres import async_session
 from repository.outbox_repository import OutboxRepository
-from consumer.webhook_sender import send_webhook
 
 logger = logging.getLogger(__name__)
 

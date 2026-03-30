@@ -1,9 +1,10 @@
-from uuid import UUID
 from datetime import datetime
 from typing import Sequence
+from uuid import UUID
+
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update
 
 from core.db.models import OutboxEvent
 
