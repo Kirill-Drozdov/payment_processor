@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime as dt
 from typing import Sequence
 from uuid import UUID
 
@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from core.datatypes import WebhookStatus
 from core.db.models import OutboxEvent
 
 
@@ -19,15 +20,16 @@ class OutboxRepository:
         webhook_url: str,
         payload: dict,
     ) -> OutboxEvent:
-        """Создаёт запись в outbox (в рамках текущей транзакции)."""
+        """Создаёт запись в outbox."""
         event = OutboxEvent(
             payment_id=payment_id,
             webhook_url=webhook_url,
             payload=payload,
             status="pending",
-            next_retry_at=datetime.utcnow(),
+            next_retry_at=dt.datetime.now(dt.timezone.utc),
         )
         self._session.add(event)
+        await self._session.commit()
         return event
 
     async def get_pending_events(
@@ -38,7 +40,9 @@ class OutboxRepository:
         stmt = (
             select(OutboxEvent)
             .where(OutboxEvent.status == "pending")
-            .where(OutboxEvent.next_retry_at <= datetime.utcnow())
+            .where(
+                OutboxEvent.next_retry_at <= dt.datetime.now(dt.timezone.utc)
+            )
             .order_by(OutboxEvent.created_at)
             .limit(limit)
         )
@@ -50,20 +54,34 @@ class OutboxRepository:
         await self._session.execute(
             update(OutboxEvent)
             .where(OutboxEvent.id == event_id)
-            .values(status="processing", updated_at=datetime.utcnow())
+            .values(
+                status="processing",
+                updated_at=dt.datetime.now(dt.timezone.utc),
+            )
         )
+        await self._session.commit()
 
-    async def mark_completed(self, event_id: UUID) -> None:
-        """Удаляет событие после успешной отправки (либо помечает completed)."""
-        # Для простоты удаляем, можно и помечать completed
-        await self._session.delete(
-            await self._session.get(OutboxEvent, event_id)
-        )
-
-    async def mark_failed(
+    async def mark_completed_or_failed(
         self,
         event_id: UUID,
-        next_retry_at: datetime,
+        status: WebhookStatus,
+    ) -> None:
+        """Помечает событие completed после успешной отправки."""
+        # Для простоты удаляем, можно и помечать completed
+        await self._session.execute(
+            update(OutboxEvent)
+            .where(OutboxEvent.id == event_id)
+            .values(
+                status=status.value,
+                updated_at=dt.datetime.now(dt.timezone.utc),
+            )
+        )
+        await self._session.commit()
+
+    async def mark_pending(
+        self,
+        event_id: UUID,
+        next_retry_at: dt.datetime,
         retry_count: int,
     ) -> None:
         """Обновляет событие после неудачной отправки."""
@@ -74,6 +92,7 @@ class OutboxRepository:
                 status="pending",
                 retry_count=retry_count,
                 next_retry_at=next_retry_at,
-                updated_at=datetime.utcnow(),
+                updated_at=dt.datetime.now(dt.timezone.utc),
             )
         )
+        await self._session.commit()

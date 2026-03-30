@@ -31,7 +31,7 @@ payment_queue = RabbitQueue(
 
 
 @asynccontextmanager
-async def lifespan(context):
+async def lifespan():
     # Стартуем outbox worker в фоне
     task = asyncio.create_task(outbox_worker.start())
     yield
@@ -41,7 +41,7 @@ async def lifespan(context):
 
 app = FastStream(
     broker,
-    # lifespan=lifespan,
+    lifespan=lifespan,
 )
 
 

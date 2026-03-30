@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from core.datatypes import PaymentStatus
+from core.datatypes import WebhookStatus
 from core.db.postgres import Base
 
 
@@ -27,10 +27,10 @@ class OutboxEvent(Base):
     payment_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
     webhook_url: Mapped[str] = mapped_column(String(500), nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
-    status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus),
+    status: Mapped[WebhookStatus] = mapped_column(
+        Enum(WebhookStatus),
         nullable=False,
-        default=PaymentStatus.PENDING,
+        default=WebhookStatus.PENDING,
     )
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     next_retry_at: Mapped[Optional[datetime]] = mapped_column(

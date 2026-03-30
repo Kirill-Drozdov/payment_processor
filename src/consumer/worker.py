@@ -1,13 +1,13 @@
 # consumer/outbox_worker.py
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from consumer.webhook_sender import send_webhook
 from core.config import settings
-from core.db.postgres import async_session
+from core.datatypes import WebhookStatus
 from repository.outbox_repository import OutboxRepository
 
 logger = logging.getLogger(__name__)
@@ -35,15 +35,14 @@ class OutboxWorker:
 
     async def _process_pending_events(self):
         async with self.session_factory() as session:
-            repo = OutboxRepository(session)
-            events = await repo.get_pending_events(limit=50)
+            _outbox_repository = OutboxRepository(session)
+            events = await _outbox_repository.get_pending_events(limit=50)
 
             for event in events:
-                # Помечаем как processing
-                await repo.mark_processing(event.id)
-                await session.commit()
+                # Помечаем как processing.
+                await _outbox_repository.mark_processing(event.id)
 
-                # Отправляем webhook
+                # Отправляем webhook.
                 success = await send_webhook(
                     url=event.webhook_url,
                     payload=event.payload,
@@ -51,21 +50,35 @@ class OutboxWorker:
                 )
 
                 if success:
-                    await repo.mark_completed(event.id)
+                    await _outbox_repository.mark_completed_or_failed(
+                        event_id=event.id,
+                        status=WebhookStatus.COMPLETED,
+                    )
                 else:
-                    # Экспоненциальная задержка
+                    # Экспоненциальная задержка.
                     new_retry_count = event.retry_count + 1
                     if new_retry_count >= settings.max_webhook_retries:
-                        # Превышено число попыток – помечаем как failed (можно отправить в DLQ или просто логировать)
+                        # Превышено число попыток – помечаем как failed
+                        # (можно отправить в DLQ или просто логировать).
                         logger.error(
-                            f"Webhook failed after {new_retry_count} attempts: {event.id}")
-                        # Можно удалить или пометить failed
-                        # удаляем, чтобы не засорять
-                        await repo.mark_completed(event.id)
+                            f"Webhook failed after {new_retry_count} "
+                            f"attempts: {event.id}"
+                        )
+                        await _outbox_repository.mark_completed_or_failed(
+                            event_id=event.id,
+                            status=WebhookStatus.FAILED,
+                        )
                     else:
-                        delay = settings.base_retry_delay * \
+                        delay = (
+                            settings.base_retry_delay *
                             (2 ** (new_retry_count - 1))
-                        next_retry = datetime.utcnow() + timedelta(seconds=delay)
-                        await repo.mark_failed(event.id, next_retry, new_retry_count)
-
-                await session.commit()
+                        )
+                        next_retry = (
+                            datetime.now(timezone.utc) +
+                            timedelta(seconds=delay)
+                        )
+                        await _outbox_repository.mark_pending(
+                            event.id,
+                            next_retry,
+                            new_retry_count,
+                        )

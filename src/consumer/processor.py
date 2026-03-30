@@ -1,5 +1,4 @@
-# consumer/processor.py
-from datetime import datetime
+import datetime as dt
 import logging
 
 from faststream.rabbit import RabbitBroker
@@ -27,11 +26,13 @@ async def handle_payment_created(
     logger.info(f"Received payment event: {event.payment_id}")
 
     async with async_session() as session:  # type: ignore
-        payment_repo = PaymentRepository(
+        _payment_repository = PaymentRepository(
             model=Payment,
             session=session,
         )
-        payment = await payment_repo.get(event.payment_id)
+        _outbox_repository = OutboxRepository(session)
+
+        payment = await _payment_repository.get(event.payment_id)
 
         if payment is None:
             logger.error(f"Payment {event.payment_id} not found in DB")
@@ -47,14 +48,11 @@ async def handle_payment_created(
             return
 
         # Эмулируем обработку
-        result_status = await PaymentEmulator.process(
-            amount=payment.amount,
-            currency=payment.currency,
-        )
+        result_status = await PaymentEmulator.process()
 
-        now = datetime.utcnow()
+        now = dt.datetime.now(dt.timezone.utc)
         # Обновляем статус в БД
-        updated = await payment_repo.update_status(
+        updated = await _payment_repository.update_status(
             payment_id=event.payment_id,
             status=result_status,
             processed_at=now,
@@ -79,13 +77,11 @@ async def handle_payment_created(
                 "currency": payment.currency.value,
                 "processed_at": now.isoformat(),
             }
-            outbox_repo = OutboxRepository(session)
-            await outbox_repo.create_event(
+            await _outbox_repository.create_event(
                 payment_id=event.payment_id,
                 webhook_url=payment.webhook_url,
                 payload=webhook_payload,
             )
-            # Транзакция закоммитится после выхода из контекстного менеджера
         logger.info(
             f"Payment {event.payment_id} processed with"
             f" status {result_status.value}"

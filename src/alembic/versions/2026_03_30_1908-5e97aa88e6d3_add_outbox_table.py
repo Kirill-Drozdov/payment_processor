@@ -1,19 +1,18 @@
 """Add Outbox table.
 
-Revision ID: 67244a108add
+Revision ID: 5e97aa88e6d3
 Revises: 54443c5159d3
-Create Date: 2026-03-30 15:51:51.802131
+Create Date: 2026-03-30 19:08:05.764653
 
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ENUM
-
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = '67244a108add'
+revision: str = '5e97aa88e6d3'
 down_revision: Union[str, Sequence[str], None] = '54443c5159d3'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,7 +26,7 @@ def upgrade() -> None:
     sa.Column('payment_id', sa.Uuid(), nullable=False),
     sa.Column('webhook_url', sa.String(length=500), nullable=False),
     sa.Column('payload', sa.JSON(), nullable=False),
-    sa.Column('status', ENUM('PENDING', 'SUCCEEDED', 'FAILED', name='paymentstatus', create_type=False), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', name='webhookstatus'), nullable=False),
     sa.Column('retry_count', sa.Integer(), nullable=False),
     sa.Column('next_retry_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

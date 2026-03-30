@@ -8,6 +8,14 @@ class PaymentStatus(str, PyEnum):
     FAILED = "failed"
 
 
+class WebhookStatus(str, PyEnum):
+    """Статусы платежа."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class Currency(str, PyEnum):
     """Допустимые валюты."""
     RUB = "RUB"
