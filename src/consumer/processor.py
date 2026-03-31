@@ -64,7 +64,7 @@ async def handle_payment_created(
             )
             return
 
-        # Если платеж обработан успешно, создаем outbox событие для webhook
+        # Если платеж обработан, создаем outbox событие для webhook
         if (
             result_status == PaymentStatus.SUCCEEDED or
             result_status == PaymentStatus.FAILED

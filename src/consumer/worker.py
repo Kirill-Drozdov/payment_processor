@@ -5,6 +5,7 @@ import logging
 from consumer.webhook_sender import send_webhook
 from core.config import settings
 from core.datatypes import WebhookStatus
+from core.db.models.outbox_event import OutboxEvent
 from repository.outbox_repository import OutboxRepository
 
 
@@ -29,12 +30,14 @@ class OutboxWorker:
     async def stop(self):
         self._running = False
 
-    async def _process_pending_events(self):
+    async def _process_event(
+        self,
+        event: OutboxEvent,
+    ) -> None:
         async with self.session_factory() as session:
-            _outbox_repository = OutboxRepository(session)
-            events = await _outbox_repository.get_pending_events(limit=50)
-            # TODO Узкое место. Надо делать через создание множества задач.
-            for event in events:
+            try:
+                _outbox_repository = OutboxRepository(session)
+
                 # Помечаем как processing.
                 await _outbox_repository.mark_processing(event.id)
 
@@ -78,3 +81,22 @@ class OutboxWorker:
                             next_retry,
                             new_retry_count,
                         )
+            except Exception as error:
+                self._logger.error(
+                    f"Error processing event {event.id}: {error}"
+                )
+                raise
+
+    async def _process_pending_events(self):
+        async with self.session_factory() as session:
+            _outbox_repository = OutboxRepository(session)
+            events = await _outbox_repository.get_pending_events(limit=500)
+            event_tasks = [
+                asyncio.create_task(
+                    self._process_event(
+                        event=event,
+                    )
+                )
+                for event in events
+            ]
+            await asyncio.gather(*event_tasks, return_exceptions=True)
