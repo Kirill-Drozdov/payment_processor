@@ -2,18 +2,15 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from consumer.webhook_sender import send_webhook
 from core.config import settings
 from core.datatypes import WebhookStatus
 from repository.outbox_repository import OutboxRepository
 
-logger = logging.getLogger(__name__)
-
 
 class OutboxWorker:
     """Фоновый воркер, который отправляет ожидающие webhook-уведомления."""
+    _logger = logging.getLogger(__name__)
 
     def __init__(self, session_factory):
         self.session_factory = session_factory
@@ -21,12 +18,12 @@ class OutboxWorker:
 
     async def start(self):
         self._running = True
-        logger.info("Outbox worker started")
+        self._logger.info("Outbox worker started")
         while self._running:
             try:
                 await self._process_pending_events()
             except Exception as e:
-                logger.exception(f"Outbox worker error: {e}")
+                self._logger.exception(f"Outbox worker error: {e}")
             await asyncio.sleep(settings.outbox_poll_interval)
 
     async def stop(self):
@@ -59,7 +56,7 @@ class OutboxWorker:
                     if new_retry_count >= settings.max_webhook_retries:
                         # Превышено число попыток – помечаем как failed
                         # (можно отправить в DLQ или просто логировать).
-                        logger.error(
+                        self._logger.error(
                             f"Webhook failed after {new_retry_count} "
                             f"attempts: {event.id}"
                         )

@@ -15,11 +15,7 @@ _broker: RabbitBroker | None = None
 async def lifespan(app: FastAPI):
     global _broker
 
-    _broker = RabbitBroker(
-        f"amqp://{settings.rabbitmq_default_user}:"
-        f"{settings.rabbitmq_default_pass}@{settings.rabbit_host}:"
-        f"{settings.rabbit_port}/"
-    )
+    _broker = RabbitBroker(settings.rabbitmq_url)
     await _broker.connect()
 
     queue = RabbitQueue(

@@ -2,7 +2,6 @@ import datetime as dt
 import logging
 
 from faststream.rabbit import RabbitBroker
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from consumer.payment_emulator import PaymentEmulator
 from core.datatypes import PaymentStatus
@@ -12,18 +11,18 @@ from repository.outbox_repository import OutboxRepository
 from repository.payment_repository import PaymentRepository
 from schemas.events import PaymentCreatedEvent
 
-logger = logging.getLogger(__name__)
-
 
 async def handle_payment_created(
     event: PaymentCreatedEvent,
     broker: RabbitBroker,
 ) -> None:
     """
-    Обработчик сообщения из очереди payment.created.v1.
+    Обработчик сообщения по ключу payment.created.v1.
     Выполняется в рамках FastStream-подписки.
     """
-    logger.info(f"Received payment event: {event.payment_id}")
+    _logger = logging.getLogger(__name__)
+
+    _logger.info(f"Received payment event: {event.payment_id}")
 
     async with async_session() as session:  # type: ignore
         _payment_repository = PaymentRepository(
@@ -35,23 +34,23 @@ async def handle_payment_created(
         payment = await _payment_repository.get(event.payment_id)
 
         if payment is None:
-            logger.error(f"Payment {event.payment_id} not found in DB")
-            # Не можем обработать – отправляем в DLQ (выбросим исключение)
+            _logger.error(f"Payment {event.payment_id} not found in DB")
+            # Не можем обработать – отправляем в DLQ (выбросим исключение).
             raise ValueError(f"Payment {event.payment_id} not found")
 
-        # Идемпотентность: если платеж уже не в статусе pending, пропускаем
+        # Идемпотентность: если платеж уже не в статусе pending, пропускаем.
         if payment.status != PaymentStatus.PENDING:
-            logger.info(
+            _logger.info(
                 f"Payment {event.payment_id} already processed "
                 f"(status={payment.status}), skipping"
             )
             return
 
-        # Эмулируем обработку
+        # Эмулируем обработку.
         result_status = await PaymentEmulator.process()
 
         now = dt.datetime.now(dt.timezone.utc)
-        # Обновляем статус в БД
+        # Обновляем статус в БД.
         updated = await _payment_repository.update_status(
             payment_id=event.payment_id,
             status=result_status,
@@ -59,8 +58,8 @@ async def handle_payment_created(
         )
 
         if not updated:
-            # Конкурентное обновление – кто-то другой уже обработал
-            logger.warning(
+            # Конкурентное обновление – кто-то другой уже обработал.
+            _logger.warning(
                 f"Payment {event.payment_id} was already updated concurrently"
             )
             return
@@ -82,7 +81,7 @@ async def handle_payment_created(
                 webhook_url=payment.webhook_url,
                 payload=webhook_payload,
             )
-        logger.info(
+        _logger.info(
             f"Payment {event.payment_id} processed with"
             f" status {result_status.value}"
         )
