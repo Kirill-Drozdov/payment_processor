@@ -4,7 +4,7 @@ import logging
 from faststream.rabbit import RabbitBroker
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from consumer.payment_processor import PaymentEmulator
+from consumer.payment_emulator import PaymentEmulator
 from core.datatypes import PaymentStatus
 from core.db.postgres import async_session
 from core.db.models import Payment

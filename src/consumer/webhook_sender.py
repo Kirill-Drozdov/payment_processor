@@ -1,4 +1,3 @@
-# consumer/webhook_sender.py
 import logging
 
 import httpx
@@ -15,6 +14,6 @@ async def send_webhook(url: str, payload: dict, timeout: float = 10.0) -> bool:
             logger.info(
                 f"Webhook sent to {url}, status {response.status_code}")
             return True
-    except Exception as e:
-        logger.error(f"Webhook to {url} failed: {e}")
+    except Exception as error:
+        logger.error(f"Webhook to {url} failed: {error}")
         return False

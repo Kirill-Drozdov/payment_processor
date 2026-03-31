@@ -1,4 +1,3 @@
-# consumer/outbox_worker.py
 import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
@@ -37,7 +36,7 @@ class OutboxWorker:
         async with self.session_factory() as session:
             _outbox_repository = OutboxRepository(session)
             events = await _outbox_repository.get_pending_events(limit=50)
-
+            # TODO Узкое место. Надо делать через создание множества задач.
             for event in events:
                 # Помечаем как processing.
                 await _outbox_repository.mark_processing(event.id)

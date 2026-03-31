@@ -1,8 +1,5 @@
-# core/payment_processor.py
 import asyncio
-from decimal import Decimal
 import random
-from uuid import UUID
 
 from core.datatypes import PaymentStatus
 
@@ -17,7 +14,5 @@ class PaymentEmulator:
         await asyncio.sleep(delay)
 
         # 90% успеха, 10% ошибки
-        # success = random.random() < 0.9
-        # NOTE На время отладки фиксированное значение.
-        success = 0.2 < 0.9
+        success = random.random() < 0.9
         return PaymentStatus.SUCCEEDED if success else PaymentStatus.FAILED
