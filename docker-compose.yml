@@ -4,8 +4,8 @@ networks:
 services:
   payment_db:
     image: postgres:16.0
-    ports:
-      - "5433:5433"
+    # ports:
+    #   - "5433:5433"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     env_file:
@@ -21,7 +21,7 @@ services:
     image: rabbitmq:3-management
     ports:
       - "15672:15672"
-      - "5672:5672"
+      # - "5672:5672"
     env_file:
       - ./src/.env
     volumes:
@@ -36,7 +36,8 @@ services:
         max-file: "3"
   payment_api:
     build:
-      context: ./src/.
+      context: ./src/
+      dockerfile: Dockerfile.api
     ports:
       - "8000:8000"
     env_file:
@@ -51,7 +52,23 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
+  payment_consumer:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.consumer
+    env_file:
+      - ./src/.env
+    networks:
+      - payment_net
+    depends_on:
+      - rabbitmq
+      - payment_db
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
