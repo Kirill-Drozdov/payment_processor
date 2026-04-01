@@ -91,12 +91,19 @@ class OutboxWorker:
         async with self.session_factory() as session:
             _outbox_repository = OutboxRepository(session)
             events = await _outbox_repository.get_pending_events(limit=500)
-            event_tasks = [
-                asyncio.create_task(
-                    self._process_event(
-                        event=event,
-                    )
+
+        event_tasks = [
+            asyncio.create_task(
+                self._process_event(
+                    event=event,
                 )
-                for event in events
-            ]
-            await asyncio.gather(*event_tasks, return_exceptions=True)
+            )
+            for event in events
+        ]
+        results = await asyncio.gather(
+            *event_tasks,
+            return_exceptions=True,
+        )
+        for res in results:
+            if isinstance(res, Exception):
+                self._logger.error(f"Task failed: {res}")
