@@ -7,8 +7,6 @@ services:
     ports:
       - "5433:5433"
     volumes:
-    # При отладке отдельно можно использовать готовый бекап.
-      # - ./db_data:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     env_file:
       - ./src/.env
@@ -36,6 +34,24 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  payment_api:
+    build:
+      context: ./src/.
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./src/.env
+    networks:
+      - payment_net
+    depends_on:
+      - payment_db
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
 volumes:
   postgres_data:
