@@ -1,13 +1,12 @@
 
 import contextlib
 
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from faststream.rabbit import RabbitBroker, RabbitQueue
 
 from api.v1 import payment
 from core.config import settings
 from core.dependencies import get_authentication_key
-
 
 _broker: RabbitBroker | None = None
 
@@ -16,11 +15,7 @@ _broker: RabbitBroker | None = None
 async def lifespan(app: FastAPI):
     global _broker
 
-    _broker = RabbitBroker(
-        f"amqp://{settings.rabbitmq_default_user}:"
-        f"{settings.rabbitmq_default_pass}@{settings.rabbit_host}:"
-        f"{settings.rabbit_port}/"
-    )
+    _broker = RabbitBroker(settings.rabbitmq_url)
     await _broker.connect()
 
     queue = RabbitQueue(

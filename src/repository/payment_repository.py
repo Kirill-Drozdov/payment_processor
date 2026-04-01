@@ -1,6 +1,10 @@
+import datetime as dt
+from uuid import UUID
+
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.future import select
 
+from core.datatypes import PaymentStatus
 from core.db.models import Payment
 from repository.psql_repository import RepositoryPsql
 from schemas.payment import PaymentRequest
@@ -33,3 +37,24 @@ class PaymentRepository(RepositoryPsql[Payment, PaymentRequest]):
         await self._session.commit()
         await self._session.refresh(db_obj)
         return db_obj
+
+    async def update_status(
+        self,
+        payment_id: UUID,
+        status: PaymentStatus,
+        processed_at: dt.datetime,
+    ) -> Payment | None:
+        """Обновляет статус платежа и время обработки."""
+        stmt = (
+            select(Payment)
+            .where(Payment.id == payment_id)
+            .where(Payment.status == PaymentStatus.PENDING)
+        )
+        result = await self._session.execute(stmt)
+        payment = result.scalar_one_or_none()
+        if payment:
+            payment.status = status
+            payment.processed_at = processed_at
+            await self._session.commit()
+            await self._session.refresh(payment)
+        return payment
