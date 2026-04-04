@@ -1,7 +1,14 @@
-"""Модель с конфигурицией логгера."""
+"""Модель с конфигурацией логгера."""
+
+import os
 
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-LOG_DEFAULT_HANDLERS = ['console', ]
+LOG_DEFAULT_HANDLERS = ['console', 'file']  # Добавлен файловый хендлер
+
+# Путь к файлу лога (можно вынести в переменную окружения)
+LOG_FILE = os.getenv('LOG_FILE', 'logs/api.log')
+# Создаём директорию для логов, если её нет
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -36,6 +43,16 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',
         },
+        # Новый файловый хендлер с ротацией
+        'file': {
+            'level': 'DEBUG',                # Уровень для файла (можно изменить на INFO)
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_FILE,
+            'maxBytes': 30 * 1024 * 1024,    # 30 МБ
+            'backupCount': 30,               # 30 файлов ротации
+            'encoding': 'utf-8',             # Поддержка кириллицы
+            'formatter': 'verbose',          # Используем тот же формат, что и для консоли
+        },
     },
     'loggers': {
         '': {
@@ -46,7 +63,7 @@ LOGGING = {
             'level': 'INFO',
         },
         'uvicorn.access': {
-            'handlers': ['access'],
+            'handlers': ['access', 'file'],  # Также пишем access-логи в файл (опционально)
             'level': 'INFO',
             'propagate': False,
         },
@@ -54,6 +71,6 @@ LOGGING = {
     'root': {
         'level': 'INFO',
         'formatter': 'verbose',
-        'handlers': LOG_DEFAULT_HANDLERS,
+        'handlers': LOG_DEFAULT_HANDLERS,    # Сюда тоже попадёт 'file'
     },
 }
