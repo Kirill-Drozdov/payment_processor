@@ -5,8 +5,8 @@ from faststream.rabbit import RabbitBroker
 
 from consumer.payment_emulator import PaymentEmulator
 from core.datatypes import PaymentStatus
-from core.db.postgres import async_session
 from core.db.models import Payment
+from core.db.postgres import async_session
 from repository.outbox_repository import OutboxRepository
 from repository.payment_repository import PaymentRepository
 from schemas.events import PaymentCreatedEvent

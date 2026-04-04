@@ -11,8 +11,9 @@ Base = declarative_base()
 engine = create_async_engine(
     settings.postgres_dsn,
     echo=settings.echo_mode,
-    # pool_size=20,         # количество постоянных соединений
-    # max_overflow=30,      # дополнительных при пике
+    pool_size=20,         # количество постоянных соединений
+    max_overflow=10,      # дополнительных при пике
+    pool_timeout=45,
     future=True,
 )
 async_session = sessionmaker(

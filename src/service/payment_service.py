@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
+import asyncio
 from functools import lru_cache
 from http import HTTPStatus
-from uuid import UUID
 import logging
-import asyncio
+from uuid import UUID
 
 from fastapi import Depends, HTTPException
 from faststream.rabbit import RabbitBroker

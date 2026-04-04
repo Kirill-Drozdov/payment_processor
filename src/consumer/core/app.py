@@ -1,14 +1,22 @@
 import asyncio
 from contextlib import asynccontextmanager
+import logging
 
 from faststream import FastStream
 from faststream.rabbit import RabbitBroker, RabbitQueue
+from sqlalchemy.exc import TimeoutError as SATimeoutError
 
 from consumer.processor import handle_payment_created
 from consumer.worker import OutboxWorker
 from core.config import settings
 from core.db.postgres import async_session, engine
+from core.logger import set_logger_config
 from schemas.events import PaymentCreatedEvent
+
+set_logger_config(
+    level='INFO',
+    app='consumer',
+)
 
 # Глобальные объекты.
 broker = RabbitBroker(settings.rabbitmq_url)
@@ -37,10 +45,17 @@ async def lifespan():
 
 app = FastStream(
     broker,
-    # lifespan=lifespan,
+    lifespan=lifespan,
 )
+
+logger = logging.getLogger()
 
 
 @broker.subscriber(payment_queue)
 async def on_payment_created(event: PaymentCreatedEvent):
-    await handle_payment_created(event, broker)
+    try:
+        await handle_payment_created(event, broker)
+    except SATimeoutError as e:
+        logger.error(f"Database timeout for payment {event.payment_id}: {e}")
+        # Дальше решаем судьбу сообщения (см. п.3)
+        raise   # или обработать иначе

@@ -1,7 +1,7 @@
 """Модель с конфигурацией логгера."""
 
-import os
 from logging import config as logging_config
+import os
 
 
 def set_logger_config(level: str, app: str) -> dict:
