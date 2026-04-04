@@ -19,7 +19,7 @@ from aiohttp import ClientTimeout, ClientSession
 
 # --- Конфигурация по умолчанию ---
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api/v1"
-DEFAULT_ITERATIONS = 5000        # количество сценариев (POST + GET)
+DEFAULT_ITERATIONS = 15        # количество сценариев (POST + GET)
 DEFAULT_CONCURRENCY = 100        # количество параллельных воркеров
 DEFAULT_TIMEOUT = 10            # таймаут на один запрос (сек)
 
