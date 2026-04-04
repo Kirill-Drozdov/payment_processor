@@ -37,7 +37,7 @@ async def lifespan():
 
 app = FastStream(
     broker,
-    lifespan=lifespan,
+    # lifespan=lifespan,
 )
 
 

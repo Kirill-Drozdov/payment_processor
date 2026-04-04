@@ -29,8 +29,6 @@ async def handle_payment_created(
             model=Payment,
             session=session,
         )
-        _outbox_repository = OutboxRepository(session)
-
         payment = await _payment_repository.get(event.payment_id)
 
         if payment is None:
@@ -46,10 +44,18 @@ async def handle_payment_created(
             )
             return
 
-        # Эмулируем обработку.
-        result_status = await PaymentEmulator.process()
+    # Эмулируем обработку.
+    result_status = await PaymentEmulator.process()
 
-        now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.now(dt.timezone.utc)
+
+    async with async_session() as session:  # type: ignore
+        _payment_repository = PaymentRepository(
+            model=Payment,
+            session=session,
+        )
+        _outbox_repository = OutboxRepository(session)
+
         # Обновляем статус в БД.
         updated = await _payment_repository.update_status(
             payment_id=event.payment_id,
