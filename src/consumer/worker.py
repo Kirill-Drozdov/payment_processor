@@ -34,65 +34,67 @@ class OutboxWorker:
         self,
         event: OutboxEvent,
     ) -> None:
-            try:
-                async with self.session_factory() as session:
-                    _outbox_repository = OutboxRepository(session)
+        try:
+            async with self.session_factory() as session:
+                _outbox_repository = OutboxRepository(session)
 
-                    # Помечаем как processing.
-                    await _outbox_repository.mark_processing(event.id)
+                # Помечаем как processing.
+                await _outbox_repository.mark_processing(event.id)
 
-                # Отправляем webhook.
-                success = await send_webhook(
-                    url=event.webhook_url,
-                    payload=event.payload,
-                    timeout=settings.webhook_timeout,
-                )
-                async with self.session_factory() as session:
-                    _outbox_repository = OutboxRepository(session)
+            # Отправляем webhook.
+            success = await send_webhook(
+                url=event.webhook_url,
+                payload=event.payload,
+                timeout=settings.webhook_timeout,
+            )
+            async with self.session_factory() as session:
+                _outbox_repository = OutboxRepository(session)
 
-                    if success:
+                if success:
+                    await _outbox_repository.mark_completed_or_failed(
+                        event_id=event.id,
+                        status=WebhookStatus.COMPLETED,
+                    )
+                else:
+                    # Экспоненциальная задержка.
+                    new_retry_count = event.retry_count + 1
+                    if new_retry_count >= settings.max_webhook_retries:
+                        # Превышено число попыток – помечаем как failed
+                        # (можно отправить в DLQ или просто логировать).
+                        self._logger.info(
+                            f"Webhook failed after {new_retry_count} "
+                            f"attempts: {event.id}"
+                        )
                         await _outbox_repository.mark_completed_or_failed(
                             event_id=event.id,
-                            status=WebhookStatus.COMPLETED,
+                            status=WebhookStatus.FAILED,
                         )
                     else:
-                        # Экспоненциальная задержка.
-                        new_retry_count = event.retry_count + 1
-                        if new_retry_count >= settings.max_webhook_retries:
-                            # Превышено число попыток – помечаем как failed
-                            # (можно отправить в DLQ или просто логировать).
-                            self._logger.error(
-                                f"Webhook failed after {new_retry_count} "
-                                f"attempts: {event.id}"
-                            )
-                            await _outbox_repository.mark_completed_or_failed(
-                                event_id=event.id,
-                                status=WebhookStatus.FAILED,
-                            )
-                        else:
-                            delay = (
-                                settings.base_retry_delay *
-                                (2 ** (new_retry_count - 1))
-                            )
-                            next_retry = (
-                                datetime.now(timezone.utc) +
-                                timedelta(seconds=delay)
-                            )
-                            await _outbox_repository.mark_pending(
-                                event.id,
-                                next_retry,
-                                new_retry_count,
-                            )
-            except Exception as error:
-                self._logger.error(
-                    f"Error processing event {event.id}: {error}"
-                )
-                raise
+                        delay = (
+                            settings.base_retry_delay *
+                            (2 ** (new_retry_count - 1))
+                        )
+                        next_retry = (
+                            datetime.now(timezone.utc) +
+                            timedelta(seconds=delay)
+                        )
+                        await _outbox_repository.mark_pending(
+                            event.id,
+                            next_retry,
+                            new_retry_count,
+                        )
+        except Exception as error:
+            self._logger.error(
+                f"Error processing event {event.id}: {error}"
+            )
+            raise
 
     async def _process_pending_events(self):
         async with self.session_factory() as session:
             _outbox_repository = OutboxRepository(session)
-            events = await _outbox_repository.get_pending_events(limit=500)
+            events = await _outbox_repository.get_pending_events(
+                limit=settings.outbox_batch_size,
+            )
 
         event_tasks = [
             asyncio.create_task(
