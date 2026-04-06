@@ -34,19 +34,33 @@ class OutboxWorker:
         self,
         event: OutboxEvent,
     ) -> None:
-        async with self.session_factory() as session:
-            try:
+        """Обработка отдельного события.
+
+        Args:
+            event (OutboxEvent): событие.
+        """
+        try:
+            async with self.session_factory() as session:
                 _outbox_repository = OutboxRepository(session)
 
                 # Помечаем как processing.
                 await _outbox_repository.mark_processing(event.id)
 
-                # Отправляем webhook.
-                success = await send_webhook(
-                    url=event.webhook_url,
-                    payload=event.payload,
-                    timeout=settings.webhook_timeout,
-                )
+            # Отправляем webhook.
+            success = await send_webhook(
+                url=event.webhook_url,
+                payload=event.payload,
+                timeout=settings.webhook_timeout,
+            )
+            # TODO На текущий момент тут есть одна не решенная проблема. Когда
+            # мы выше пометили событие как processing, а в этом месте
+            # попытались захватить сессию и ее не оказалось в пуле соединений,
+            # так как лимит исчерпался, то событие так на вечно и останется не
+            # обработанным, что породит несогласованность данных.
+            # Первое, что приходит в голову, это установить какой-то обработчик
+            # ошибки на захват сессии.
+            async with self.session_factory() as session:
+                _outbox_repository = OutboxRepository(session)
 
                 if success:
                     await _outbox_repository.mark_completed_or_failed(
@@ -59,7 +73,7 @@ class OutboxWorker:
                     if new_retry_count >= settings.max_webhook_retries:
                         # Превышено число попыток – помечаем как failed
                         # (можно отправить в DLQ или просто логировать).
-                        self._logger.error(
+                        self._logger.info(
                             f"Webhook failed after {new_retry_count} "
                             f"attempts: {event.id}"
                         )
@@ -81,16 +95,19 @@ class OutboxWorker:
                             next_retry,
                             new_retry_count,
                         )
-            except Exception as error:
-                self._logger.error(
-                    f"Error processing event {event.id}: {error}"
-                )
-                raise
+        except Exception as error:
+            self._logger.error(
+                f"Error processing event {event.id}: {error}"
+            )
+            raise
 
     async def _process_pending_events(self):
+        """Обработка всех событий с отправкой уведомления."""
         async with self.session_factory() as session:
             _outbox_repository = OutboxRepository(session)
-            events = await _outbox_repository.get_pending_events(limit=500)
+            events = await _outbox_repository.get_pending_events(
+                limit=settings.outbox_batch_size,
+            )
 
         event_tasks = [
             asyncio.create_task(

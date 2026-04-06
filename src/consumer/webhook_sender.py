@@ -16,5 +16,8 @@ async def send_webhook(url: str, payload: dict, timeout: float = 10.0) -> bool:
                 f"Webhook sent to {url}, status {response.status_code}")
             return True
     except Exception as error:
-        _logger.error(f"Webhook to {url} failed: {error}")
+        # NOTE Пока помечаем как info, чтоб быстрее отлавливать более грубые
+        # ошибки.
+        _logger.info(f"Webhook to {url} failed: {error}")
+        # _logger.error(f"Webhook to {url} failed: {error}")
         return False

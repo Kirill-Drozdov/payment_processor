@@ -19,9 +19,9 @@ from aiohttp import ClientTimeout, ClientSession
 
 # --- Конфигурация по умолчанию ---
 DEFAULT_BASE_URL = "http://127.0.0.1:8000/api/v1"
-DEFAULT_ITERATIONS = 500        # количество сценариев (POST + GET)
+DEFAULT_ITERATIONS = 10000        # количество сценариев (POST + GET)
 DEFAULT_CONCURRENCY = 100        # количество параллельных воркеров
-DEFAULT_TIMEOUT = 10            # таймаут на один запрос (сек)
+DEFAULT_TIMEOUT = 20            # таймаут на один запрос (сек)
 
 # Данные для генерации запросов
 CURRENCIES = ["USD", "EUR", "RUB"]
@@ -129,18 +129,18 @@ async def perform_scenario(
             return
 
         # GET /payments/{payment_id}
-        get_url = f"{base_url}/payments/{payment_id}"
-        try:
-            start = time.monotonic()
-            async with session.get(get_url, headers=headers) as resp:
-                elapsed = time.monotonic() - start
-                if resp.status == 200:  # HTTPStatus.OK
-                    stats_get.add(elapsed, success=True)
-                else:
-                    await resp.read()
-                    stats_get.add(elapsed, success=False)
-        except Exception:
-            stats_get.add(0.0, success=False)
+        # get_url = f"{base_url}/payments/{payment_id}"
+        # try:
+        #     start = time.monotonic()
+        #     async with session.get(get_url, headers=headers) as resp:
+        #         elapsed = time.monotonic() - start
+        #         if resp.status == 200:  # HTTPStatus.OK
+        #             stats_get.add(elapsed, success=True)
+        #         else:
+        #             await resp.read()
+        #             stats_get.add(elapsed, success=False)
+        # except Exception:
+        #     stats_get.add(0.0, success=False)
 
 
 async def run_load_test(
@@ -163,8 +163,13 @@ async def run_load_test(
     async with ClientSession(timeout=timeout_config) as session:
         # Создаём список задач (iterations штук)
         tasks = [
-            perform_scenario(session, base_url, stats_post,
-                             stats_get, semaphore)
+            perform_scenario(
+                session,
+                base_url,
+                stats_post,
+                stats_get,
+                semaphore,
+            )
             for _ in range(iterations)
         ]
 

@@ -1,12 +1,6 @@
-from logging import config as logging_config
 import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from core.logger import LOGGING
-
-# Применяем настройки логирования.
-logging_config.dictConfig(LOGGING)
 
 # Корень проекта.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,16 +20,18 @@ class Settings(BaseSettings):
     rabbitmq_default_pass: str = 'admin'
     rabbit_host: str = 'localhost'
     rabbit_port: int = 5672
-    # Общие настройки проекта.
-    app_port: int = 8000
-    project_name: str = 'PaymentProcessor'
-    app_version: str = 'v0.0.1'
-
     # Consumer
     webhook_timeout: float = 10.0
     outbox_poll_interval: float = 1.0
     max_webhook_retries: int = 5
     base_retry_delay: float = 1.0
+    outbox_batch_size: int = 500
+    broker_prefetch_count: int = 100
+    # Общие настройки проекта.
+    app_port: int = 8000
+    project_name: str = 'PaymentProcessor'
+    app_version: str = 'v0.0.1'
+
 
     @property
     def postgres_dsn(self) -> str:

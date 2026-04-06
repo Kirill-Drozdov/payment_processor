@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+import asyncio
 from functools import lru_cache
 from http import HTTPStatus
+import logging
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
@@ -40,6 +42,7 @@ class PaymentService(PaymentServiceABC):
     ) -> None:
         self._payment_repository = payment_repository
         self._broker = broker
+        self._logger = logging.getLogger('')
 
     async def create(
         self,
@@ -55,6 +58,15 @@ class PaymentService(PaymentServiceABC):
         Returns:
             PaymentResponse: данные по созданному платежу.
         """
+        task = asyncio.current_task()
+        task_name = task
+        if task is not None:
+            task_name = task.get_name()
+
+        self._logger.info(
+            f'Задача: {task_name}. Принят запрос на создание платежа:'
+            f' {payment.description}',
+        )
         existing = await self._payment_repository.get_by_idempotency_key(
             idempotency_key=idempotency_key,
         )
@@ -66,6 +78,9 @@ class PaymentService(PaymentServiceABC):
             idempotency_key=idempotency_key,
         )
 
+        self._logger.info(
+            f'Задача: {task_name}. Платеж обработан. Публикуем событие в очередь.',
+        )
         event_data = {
             "payment_id": str(new_payment.id),
             "status": new_payment.status.value,
@@ -79,6 +94,10 @@ class PaymentService(PaymentServiceABC):
             routing_key="payment.created.v1",
             exchange="",
             timeout=3,
+        )
+        self._logger.info(
+            f'Задача: {task_name}. Событие по платежу {payment.description} '
+            'опубликовано. Возвращаем ответ.',
         )
 
         return new_payment
