@@ -34,6 +34,11 @@ class OutboxWorker:
         self,
         event: OutboxEvent,
     ) -> None:
+        """Обработка отдельного события.
+
+        Args:
+            event (OutboxEvent): событие.
+        """
         try:
             async with self.session_factory() as session:
                 _outbox_repository = OutboxRepository(session)
@@ -47,6 +52,13 @@ class OutboxWorker:
                 payload=event.payload,
                 timeout=settings.webhook_timeout,
             )
+            # TODO На текущий момент тут есть одна не решенная проблема. Когда
+            # мы выше пометили событие как processing, а в этом месте
+            # попытались захватить сессию и ее не оказалось в пуле соединений,
+            # так как лимит исчерпался, то событие так на вечно и останется не
+            # обработанным, что породит несогласованность данных.
+            # Первое, что приходит в голову, это установить какой-то обработчик
+            # ошибки на захват сессии.
             async with self.session_factory() as session:
                 _outbox_repository = OutboxRepository(session)
 
@@ -90,6 +102,7 @@ class OutboxWorker:
             raise
 
     async def _process_pending_events(self):
+        """Обработка всех событий с отправкой уведомления."""
         async with self.session_factory() as session:
             _outbox_repository = OutboxRepository(session)
             events = await _outbox_repository.get_pending_events(
