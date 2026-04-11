@@ -22,6 +22,10 @@ async def handle_payment_created(
     """
     _logger = logging.getLogger(__name__)
 
+    _outbox_repository = OutboxRepository(
+        session_maker=async_session,  # type: ignore
+    )
+
     _logger.info(f"Received payment event: {event.payment_id}")
 
     async with async_session() as session:  # type: ignore
@@ -54,8 +58,6 @@ async def handle_payment_created(
             model=Payment,
             session=session,
         )
-        _outbox_repository = OutboxRepository(session)
-
         # Обновляем статус в БД.
         updated = await _payment_repository.update_status(
             payment_id=event.payment_id,
@@ -63,31 +65,31 @@ async def handle_payment_created(
             processed_at=now,
         )
 
-        if not updated:
-            # Конкурентное обновление – кто-то другой уже обработал.
-            _logger.warning(
-                f"Payment {event.payment_id} was already updated concurrently"
-            )
-            return
-
-        # Если платеж обработан, создаем outbox событие для webhook
-        if (
-            result_status == PaymentStatus.SUCCEEDED or
-            result_status == PaymentStatus.FAILED
-        ):
-            webhook_payload = {
-                "payment_id": str(event.payment_id),
-                "status": result_status.value,
-                "amount": str(payment.amount),
-                "currency": payment.currency.value,
-                "processed_at": now.isoformat(),
-            }
-            await _outbox_repository.create_event(
-                payment_id=event.payment_id,
-                webhook_url=payment.webhook_url,
-                payload=webhook_payload,
-            )
-        _logger.info(
-            f"Payment {event.payment_id} processed with"
-            f" status {result_status.value}"
+    if not updated:
+        # Конкурентное обновление – кто-то другой уже обработал.
+        _logger.warning(
+            f"Payment {event.payment_id} was already updated concurrently"
         )
+        return
+
+    # Если платеж обработан, создаем outbox событие для webhook
+    if (
+        result_status == PaymentStatus.SUCCEEDED or
+        result_status == PaymentStatus.FAILED
+    ):
+        webhook_payload = {
+            "payment_id": str(event.payment_id),
+            "status": result_status.value,
+            "amount": str(payment.amount),
+            "currency": payment.currency.value,
+            "processed_at": now.isoformat(),
+        }
+        await _outbox_repository.create_event(
+            payment_id=event.payment_id,
+            webhook_url=payment.webhook_url,
+            payload=webhook_payload,
+        )
+    _logger.info(
+        f"Payment {event.payment_id} processed with"
+        f" status {result_status.value}"
+    )

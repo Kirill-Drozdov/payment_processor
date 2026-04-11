@@ -11,6 +11,7 @@ from consumer.worker import OutboxWorker
 from core.config import settings
 from core.db.postgres import async_session, engine
 from core.logger import set_logger_config
+from repository.outbox_repository import OutboxRepository
 from schemas.events import PaymentCreatedEvent
 
 set_logger_config(
@@ -23,7 +24,11 @@ broker = RabbitBroker(
     url=settings.rabbitmq_url,
     default_channel=Channel(prefetch_count=settings.broker_prefetch_count),
 )
-outbox_worker = OutboxWorker(async_session)
+outbox_worker = OutboxWorker(
+    outbox_repository=OutboxRepository(
+        session_maker=async_session,  # type: ignore
+    ),
+)
 
 # Настраиваем очередь с Dead Letter Exchange.
 payment_queue = RabbitQueue(
