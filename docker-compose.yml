@@ -35,7 +35,7 @@ services:
         max-size: "10m"
         max-file: "3"
   payment_api:
-    profiles: ["disabled"]
+    # profiles: ["disabled"]
     build:
       context: ./src/
       dockerfile: Dockerfile.api
@@ -54,7 +54,7 @@ services:
         max-size: "10m"
         max-file: "3"
   payment_consumer:
-    profiles: ["disabled"]
+    # profiles: ["disabled"]
     build:
       context: ./src
       dockerfile: Dockerfile.consumer
